@@ -1,0 +1,90 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%! from xmodule.split_test_module import ValidationMessageType %>
+
+<%
+split_test = context.get('split_test')
+user_partition = split_test.descriptor.get_selected_partition()
+messages = split_test.descriptor.validation_messages()
+show_link = group_configuration_url is not None
+%>
+
+% if is_root and not is_configured:
+    <div class="no-container-content">
+% else:
+    <div class="wrapper-xblock-message">
+% endif
+
+% if user_partition:
+    <div class="xblock-message information">
+        <p>
+            <span class="message-text">
+                ${_("This content experiment uses group configuration '{group_configuration_name}'.").format(
+                    group_configuration_name="<a href='{}'>{}</a>".format(group_configuration_url, user_partition.name) if show_link else user_partition.name
+                )}
+            </span>
+        </p>
+    </div>
+% endif
+% if len(messages) > 0:
+    <%
+    general_validation = split_test.descriptor.general_validation_message
+    def get_validation_icon(validation_type):
+        if validation_type == ValidationMessageType.error:
+            return 'icon-exclamation-sign'
+        elif validation_type == ValidationMessageType.warning:
+            return 'icon-warning-sign'
+        return None
+
+    aggregate_validation_class = 'has-errors' if general_validation['type']==ValidationMessageType.error else ' has-warnings'
+    %>
+    <div class="xblock-message validation ${aggregate_validation_class}">
+    % if is_configured:
+        <p class="${general_validation['type']}"><i class="${get_validation_icon(general_validation['type'])}"></i>
+        ${general_validation['message']}
+        </p>
+    % endif
+    % if is_root or not is_configured:
+        <ul class="xblock-message-list">
+        % for message in messages:
+            <%
+            message_type = message.message_type
+            message_type_display_name = ValidationMessageType.display_name(message_type) if message_type else None
+            %>
+                <li class="xblock-message-item ${message_type}">
+                    % if not is_configured:
+                        <i class="${get_validation_icon(message_type)}"></i>
+                    % endif
+                    <span class="message-text">
+                        % if message_type_display_name:
+                            <span class="sr">${message_type_display_name}:</span>
+                        % endif
+                        ${unicode(message)}
+
+                    % if message.action_class:
+                        <a href="#" class="button action-button ${message.action_class}">
+                            <span class="action-button-text">${message.action_label}</span>
+                        </a>
+                    % endif
+                    </span>
+                </li>
+        % endfor
+        </ul>
+    % endif
+    </div>
+% endif
+
+</div>
+
+% if is_root:
+    <div class="wrapper-groups is-active">
+        <h3 class="sr">${_("Active Groups")}</h3>
+        ${active_groups_preview}
+    </div>
+
+    % if inactive_groups_preview:
+        <div class="wrapper-groups is-inactive">
+            <h3 class="title">${_("Inactive Groups")}</h3>
+            ${inactive_groups_preview}
+        </div>
+    % endif
+% endif
